@@ -470,9 +470,18 @@ app.layout = dbc.Container(
                       ]),
               ], width=4),
               dbc.Col([
-                  dcc.Graph(id='cost_plot', config={'autosizable': True}),
-                  dcc.Graph(id='co2_plot', config={'autosizable': True}), 
-              ], width=5),
+                  dbc.Row([
+                      dbc.Col([
+                          dcc.Markdown(id='cost_summary'),
+                          dcc.Graph(id='cost_plot', config={'autosizable': True}),
+                      ],),
+                      
+                      dbc.Col([
+                          dcc.Markdown(id='co2_summary'),
+                          dcc.Graph(id='co2_plot', config={'autosizable': True}), 
+                      ]),
+                      ]),
+              ], width=True),
               # dbc.Col([
               #     dcc.Markdown(id='summary')]),
           ]),
@@ -675,7 +684,8 @@ def set_final_model_2_value(available_options):
     # Output('costs_out', 'value'),
     Output('cost_plot', 'figure'),
     Output('co2_plot', 'figure'),
-    # Output('summary', 'children'), 
+    Output('cost_summary', 'children'), 
+    Output('co2_summary', 'children'), 
     Input('submit', 'n_clicks'),
     State('options_dropdown_1', 'value'),
     State('options_dropdown_2', 'value'),
@@ -720,11 +730,13 @@ def submit_calc(n_clicks, car_1_in, car_2_in, state_in, city_miles,
         fig_co2.update_layout(title_text='Annual CO2 Emissions', title_x=0.5)
         fig_co2.update_traces(marker_color='blue')
         
-        summary_text = f'''## Summary
+        cost_summary = f'''## Summary
         
         The {car1_name} would emit {co2_all['tailpipe_co2'][0]} 
         Kg of CO2 per year.
         '''
+        
+        co2_summary = 'co2_test'
 
         return fig_cost, fig_co2
         # return summary_text
@@ -755,7 +767,10 @@ def submit_calc(n_clicks, car_1_in, car_2_in, state_in, city_miles,
         fig_co2.update_layout(title_text='Annual CO2 Emissions', title_x=0.5)
         fig_co2.update_traces(marker_color='blue')
         
-        return fig_cost, fig_co2
+        cost_summary = 'The Office Costs test'
+        co2_summary = 'The Office CO2 test'
+        
+        return fig_cost, fig_co2, cost_summary, co2_summary
     
     # return co2_all, car_costs_all
 
