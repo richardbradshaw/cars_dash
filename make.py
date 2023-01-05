@@ -406,10 +406,10 @@ def fuel_costs(car_in, state_in, city_miles, highway_miles):
 michael = cars[cars['id'] == 24008].iloc[0]
 jim = cars[cars['id'] == 21018].iloc[0]
 
-michael_costs, michael_co2_state, michael_co2_US, michael_co2_tailpipe, michael_name \
+office1_costs, office1_co2_state, office1_co2_US, office1_co2_tailpipe, office1_name \
             = fuel_costs(michael, 'Pennsylvania', 15, 10)
 
-jim_costs, jim_co2_state, jim_co2_US, jim_co2_tailpipe, jim_name \
+office2_costs, office2_co2_state, office2_co2_US, office2_co2_tailpipe, office2_name \
             = fuel_costs(jim, 'Pennsylvania', 15, 10)
 
 
@@ -471,13 +471,18 @@ app.layout = dbc.Container(
               ], width=4),
               dbc.Col([
                   dbc.Row([
+                      dbc.Card([
+                            dbc.CardBody([
+                                html.H5('Summary'),
+                                dcc.Markdown(id='summary_text'),
+                            ]),
+                        ]),
                       dbc.Col([
-                          dcc.Markdown(id='cost_summary'),
                           dcc.Graph(id='cost_plot', config={'autosizable': True}),
                       ],),
                       
                       dbc.Col([
-                          dcc.Markdown(id='co2_summary'),
+                          dcc.Markdown(id='car2_summary'),
                           dcc.Graph(id='co2_plot', config={'autosizable': True}), 
                       ]),
                       ]),
@@ -504,8 +509,7 @@ app.layout = dbc.Container(
 # Callback to set the vehicle 1 make options based on the selected year
 @app.callback(
     Output('make_dropdown_1', 'options'),
-    Input('year_dropdown_1', 'value')
-    )
+    Input('year_dropdown_1', 'value'))
 def set_make_1_options(selected_year):
     if not selected_year:
         raise PreventUpdate
@@ -532,7 +536,9 @@ def set_model_1_options(selected_make, selected_year):
     if not selected_make:
         raise PreventUpdate
     return [{'label': i, 'value': i}
-            for i in sorted(cars[(cars['year'] == selected_year) & (cars['make'] == selected_make)]['model'].unique())]
+            for i in sorted(cars[(cars['year'] == selected_year) \
+                                 & (cars['make'] == selected_make)]\
+                            ['model'].unique())]
 
 # Callback to get the value of the selected vehicle 1 model
 @app.callback(
@@ -684,8 +690,9 @@ def set_final_model_2_value(available_options):
     # Output('costs_out', 'value'),
     Output('cost_plot', 'figure'),
     Output('co2_plot', 'figure'),
-    Output('cost_summary', 'children'), 
-    Output('co2_summary', 'children'), 
+    Output('summary_text', 'children'),
+    # Output('car1_summary', 'children'), 
+    # Output('car2_summary', 'children'), 
     Input('submit', 'n_clicks'),
     State('options_dropdown_1', 'value'),
     State('options_dropdown_2', 'value'),
@@ -730,24 +737,53 @@ def submit_calc(n_clicks, car_1_in, car_2_in, state_in, city_miles,
         fig_co2.update_layout(title_text='Annual CO2 Emissions', title_x=0.5)
         fig_co2.update_traces(marker_color='blue')
         
-        cost_summary = f'''## Summary
+        car1_region_cost = round(car1_costs['annual_cost'].iloc[0])
+        car2_region_cost = round(car2_costs['annual_cost'].iloc[0])
         
-        The {car1_name} would emit {co2_all['tailpipe_co2'][0]} 
-        Kg of CO2 per year.
-        '''
+        if car1_region_cost < car2_region_cost:
+            difference_cost = 'less'
+        else:
+            difference_cost = 'more'
         
-        co2_summary = 'co2_test'
+        car1_co2 = co2_all['tailpipe_co2'].iloc[0]
+        car2_co2 = co2_all['tailpipe_co2'].iloc[1]
+        car1_region_co2 = co2_all['state_co2'].iloc[0]
+        car2_region_co2 = co2_all['state_co2'].iloc[1]
+        
+        if car1_co2 < car2_co2:
+            difference_co2 = 'lower'
+        else:
+            difference_co2 = 'higher'
+        
+        percent_difference_cost = round(abs((car1_region_cost - car2_region_cost) / 
+                                       ((car1_region_cost + car2_region_cost) / 2)) * 100)
+        percent_difference_co2 = round(abs((car1_co2 - car2_co2) / 
+                                       ((car1_co2 + car2_co2) / 2)) * 100)
+        if (car1_co2_tailpipe == 0) or (car2_co2_tailpipe == 0):
+            summary_text = f'''A {car1_name} is **{percent_difference_cost}% 
+            {difference_cost} expensive** with **{percent_difference_co2}% 
+            {difference_co2} CO2 emissions** than a {car2_name}, based on 
+            driving {city_miles} city miles and {highway_miles} highway miles 
+            per day in {state_in}.  Electric vehicles have 0 tailpipe CO2 
+            emissions, the total emissions represent the average CO2 
+            emissions in {state_in} while charging the electric vehicle'''
+        else:
+            summary_text = f'''A {car1_name} is **{percent_difference_cost}% 
+            {difference_cost} expensive** with **{percent_difference_co2}% 
+            {difference_co2} CO2 emissions** than a {car2_name}, based on 
+            driving {city_miles} city miles and {highway_miles} highway miles 
+            per day in {state_in}.'''
 
-        return fig_cost, fig_co2
+        return fig_cost, fig_co2, summary_text
         # return summary_text
     else:
-        co2_all = pd.DataFrame({'tailpipe_co2': [michael_co2_tailpipe, 
-                                                 jim_co2_tailpipe], 
-                            'state_co2': [michael_co2_state, jim_co2_state], 
-                            'US_co2': [michael_co2_US, jim_co2_US], 
-                           'name': [michael_name, jim_name]})
+        co2_all = pd.DataFrame({'tailpipe_co2': [office1_co2_tailpipe, 
+                                                 office2_co2_tailpipe], 
+                            'state_co2': [office1_co2_state, office2_co2_state], 
+                            'US_co2': [office1_co2_US, office2_co2_US], 
+                           'name': [office1_name, office2_name]})
         
-        car_costs_all = pd.concat([michael_costs, jim_costs])
+        car_costs_all = pd.concat([office1_costs, office2_costs])
         
         fig_cost = px.bar(car_costs_all, y='annual_cost', x='name',
                           color='area', barmode='group', 
@@ -767,51 +803,39 @@ def submit_calc(n_clicks, car_1_in, car_2_in, state_in, city_miles,
         fig_co2.update_layout(title_text='Annual CO2 Emissions', title_x=0.5)
         fig_co2.update_traces(marker_color='blue')
         
-        cost_summary = 'The Office Costs test'
-        co2_summary = 'The Office CO2 test'
         
-        return fig_cost, fig_co2, cost_summary, co2_summary
+        car1_region_cost = round(office1_costs['annual_cost'].iloc[0])
+        car2_region_cost = round(office2_costs['annual_cost'].iloc[0])
+        
+        if car1_region_cost < car2_region_cost:
+            difference_cost = 'less'
+        else:
+            difference_cost = 'more'
+        
+        car1_co2 = co2_all['tailpipe_co2'].iloc[0]
+        car2_co2 = co2_all['tailpipe_co2'].iloc[1]
+        car1_region_co2 = co2_all['state_co2'].iloc[0]
+        car2_region_co2 = co2_all['state_co2'].iloc[1]
+        
+        if car1_co2 < car2_co2:
+            difference_co2 = 'lower'
+        else:
+            difference_co2 = 'higher'
+        
+        percent_difference_cost = round(abs((car1_region_cost - car2_region_cost) / 
+                                       ((car1_region_cost + car2_region_cost) / 2)) * 100)
+        percent_difference_co2 = round(abs((car1_co2 - car2_co2) / 
+                                       ((car1_co2 + car2_co2) / 2)) * 100)
+        
+        summary_text = f'''A {office1_name} is **{percent_difference_cost}% 
+        {difference_cost} expensive** with **{percent_difference_co2}% 
+        {difference_co2} CO2 emissions** than a {office2_name}, based on 
+        driving 15 city miles and 10 highway miles per day in Scranton, 
+        Pennsylvania.'''
+        
+        return fig_cost, fig_co2, summary_text
     
-    # return co2_all, car_costs_all
 
-
-# # test plot
-# @app.callback(
-#     Output(component_id='cost_plot', component_property='figure'),
-#     Input(component_id='costs_out', component_property='value'),
-#     Input('state_dropdown', 'value'))
-# def update_graph(car_costs_all, state_in):
-#     fig = px.bar(car_costs_all, y='annual_cost', x='name',
-#        color='area', barmode='group', 
-#       labels={'name': 'Vehicle', 'annual_cost': 'Annual Cost (USD)', 'area': ''}, 
-#       color_discrete_map={state_in: 'blue', 'US': 'red'}, template='plotly_white')
-#     fig.update_layout(title_text='Annual Fuel Costs', title_x=0.5)
-
-#     return fig
-
-# # test plot
-# @app.callback(
-#     Output(component_id='cost_plot', component_property='figure'),
-#     Input(component_id='options_dropdown_1', component_property='value'),
-#     Input(component_id='options_dropdown_2', component_property='value'),
-#     Input('year_dropdown_1', 'value'))
-# def update_graph(car_1_in, car_2_in, selected_year):
-#     car1 = cars[cars.index == car_1_in]
-#     xpos1 = car1.iloc[0]['comb08']
-#     car2 = cars[cars.index == car_2_in]
-#     xpos2 = car2.iloc[0]['comb08']
-# #    hist_data = [ice[ice['year'] == selected_year]['comb08'], 
-# #                 phev[phev['year'] == selected_year]['comb08'], 
-# #                 hybrids[hybrids['year'] == selected_year]['comb08'], 
-# #                 ev[ev['year'] == selected_year]['comb08']]
-#     hist_data = [ice['comb08'], phev['comb08'], hybrids['comb08'], 
-#                  ev['comb08']]
-#     group_labels = ['Gas-Powered', 'Plug-in Hybrid', 'Hybrid', 'Electric']
-#     mpg_fig = ff.create_distplot(hist_data, group_labels, show_hist=False, 
-#                                  show_rug=False)
-#     mpg_fig.add_vline(x=xpos1, line_width=3, line_color='green')
-#     mpg_fig.add_vline(x=xpos2, line_width=3, line_color='red')
-#     return mpg_fig
 
 # Run on local server
 if __name__ == '__main__':
