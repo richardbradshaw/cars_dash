@@ -5,4 +5,4 @@ Source code for interactive dashboard that allows users to select two vehicles f
 
 The vehicle data is from fueleconomy.gov and fuel prices are from the US Energy Information Administration (eia.gov).
 
-Dashboard is hosted on pythonanywhere.com
+Dashboard is hosted on [pythonanywhere](https://rbrad06.pythonanywhere.com)
